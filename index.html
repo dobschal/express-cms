@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>Express CMS</title>
+    <link rel="stylesheet" href="pico.min.css">
+    <style>
+        :root {
+            --pico-font-size: 16px;
+            --pico-form-element-spacing-vertical: 0.33rem;
+        }
+
+        svg:hover {
+            cursor: pointer;
+        }
+
+        h2, label {
+            text-transform: capitalize;
+        }
+    </style>
+</head>
+<body>
+<main class="container"></main>
+<script>
+
+    // region main
+
+    const prefix = "/express-cms";
+    const isAuthenticated = !!window.localStorage.getItem("auth");
+    let models = {};
+
+    main();
+
+    async function main() {
+        const {status} = await load(prefix + "/setup-status");
+        console.log("Setup status:", status);
+        if (status === "setup-required") {
+            return showSetup();
+        }
+        if (!isAuthenticated) {
+            return showLogin();
+        }
+        await loadModels();
+        if (window.location.hash) {
+            const modelName = window.location.hash.slice(1);
+            try {
+                showData(modelName, await load(prefix + "/data/" + modelName));
+            } catch (error) {
+                handleError(error);
+            }
+            return;
+        }
+        showEditor();
+    }
+
+    // endregion
+
+    // region loaders
+
+    async function loadModels() {
+        try {
+            models = await load(prefix + "/models");
+        } catch (e) {
+            handleError(e);
+        }
+    }
+
+    // endregion
+
+    // region show functions
+
+    function showNewItemModal(modelName) {
+        render("body", `
+            <dialog open id="new-item-modal">
+                <article>
+                    <header>
+                        <button aria-label="Close" rel="prev"></button>
+                        <p>
+                            <strong>Add new item to modelName</strong>
+                        </p>
+                    </header>
+                    <form id="new-item-form"></form>
+                </article>
+            </dialog>
+        `, false);
+        renderForm(modelName, "#new-item-form");
+        render("#new-item-form", `<button type="submit">Add Item</button>`, false);
+        on("#new-item-modal button[rel='prev']", "click", () => {
+            document.getElementById("new-item-modal").remove();
+        });
+
+        on("#new-item-form", "submit", async (event) => {
+            try {
+                const data = await handleFormDataAndUploads(event.target, modelName);
+                data.id = data.id ?? Date.now().toString() + "-" + Math.round(Math.random() * 100000); // Generate a unique ID for the new item
+                await post(prefix + "/data/" + modelName, data);
+                document.getElementById("new-item-modal").remove();
+                showData(modelName, await load(prefix + "/data/" + modelName));
+            } catch (error) {
+                handleError(error);
+            }
+        });
+    }
+
+    function showEditItemModal(modelName, items, item) {
+        render("body", `
+            <dialog open id="edit-item-modal">
+                <article>
+                    <header>
+                        <button aria-label="Close" rel="prev"></button>
+                        <p>
+                            <strong>Edit item ${item.id} in ${modelName}</strong>
+                        </p>
+                    </header>
+                    <form id="edit-item-form"></form>
+                </article>
+            </dialog>
+        `, false);
+        renderForm(modelName, "#edit-item-form", item);
+        render("#edit-item-form", `<button type="submit">Save Changes</button>`, false);
+        on("#edit-item-modal button[rel='prev']", "click", () => {
+            document.getElementById("edit-item-modal").remove();
+        });
+        on("#edit-item-form", "submit", async (event) => {
+            try {
+                const data = await handleFormDataAndUploads(event.target, modelName);
+                data.id = item.id; // Keep the same ID for editing
+                await request("PUT", prefix + "/data/" + modelName + "/" + item.id, data);
+                document.getElementById("edit-item-modal").remove();
+                showData(modelName, await load(prefix + "/data/" + modelName));
+            } catch (error) {
+                handleError(error);
+            }
+        });
+    }
+
+    function showData(modelName, items) {
+        const keys = ["id"].concat(Object.keys(models[modelName]));
+
+        function renderFieldCell(field, item) {
+            if (models[modelName][field] === "file") {
+                return `<td><a href="${item[field]}" target="_blank">${item[field] || "No file"}</a></td>`;
+            }
+            return `<td>${item[field] || ""}</td>`;
+        }
+
+        render("main", `
+            <p>
+                <a href="${prefix}">< Back</a>
+            </p>
+            <article>
+                <h2>${modelName}</h2>
+                <div class="overflow-auto">
+                    <table>
+                        <thead>
+                            <tr>
+                                ${keys.map(field => `<th>${field}</th>`).join("")}
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${items.map(item => `
+                                <tr>
+                                    ${keys.map(field => renderFieldCell(field, item)).join("")}
+                                    <td>
+                                        <svg class="edit-item" data-id="${item.id}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="24px" height="24px"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
+                                        <svg class="delete-item" data-id="${item.id}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="24px" height="24px"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                                    </td>
+                                </tr>
+                            `).join("")}
+                        </tbody>
+                    </table>
+                </div>
+                <button id="add-item-button">Add Item</button>
+            </article>
+        `);
+        on("#add-item-button", "click", () => {
+            showNewItemModal(modelName, items);
+        });
+        on(".edit-item", "click", async (event) => {
+            const itemId = event.target.dataset.id;
+            const item = items.find(i => i.id === itemId);
+            if (!item) return;
+            showEditItemModal(modelName, items, item);
+        });
+        on(".delete-item", "click", async (event) => {
+            const itemId = event.target.dataset.id;
+            if (!confirm("Are you sure you want to delete this item?")) return;
+            try {
+                await request("DELETE", prefix + "/data/" + modelName + "/" + itemId);
+                showData(modelName, await load(prefix + "/data/" + modelName));
+            } catch (error) {
+                handleError(error);
+            }
+        });
+    }
+
+    function showEditor() {
+        render("main", `
+            <article>
+                <div>
+                    <button style="float: right" id="logout" class="secondary">Logout</button>
+                    <h1>Express CMS</h1>
+                </div>
+                <div>
+                    <label for="model-select">Select a collection:</label>
+                    <select id="model-select">
+                        <option value="" disabled selected>Select a collection...</option>
+                        ${Object.keys(models).map(model => `<option value="${model}">${model}</option>`).join("")}
+                    </select>
+                </div>
+            </article>
+        `);
+        on("#model-select", "change", async (event) => {
+            const model = event.target.value;
+            if (!model) return;
+            try {
+                const data = await load(prefix + "/data/" + model);
+                window.location.hash = model; // Update hash for direct access
+                showData(model, data);
+            } catch (error) {
+                handleError(error);
+            }
+        });
+        on("#logout", "click", () => {
+            window.localStorage.removeItem("auth");
+            window.location.reload();
+        });
+    }
+
+    function showLogin() {
+        render("main", `
+            <article>
+                <h1>Express CMS Login</h1>
+                <p>Please enter your password to access the CMS.</p>
+                <form id="login-form">
+                    <div>
+                        <label for="password">Password:</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
+                    <button type="submit">Login</button>
+                </form>
+            </article>
+        `);
+        on("#login-form", "submit", async (event) => {
+            const password = event.target["password"].value;
+            try {
+                await post(prefix + "/login", {password});
+                window.localStorage.setItem("auth", password);
+                window.location.reload();
+            } catch (error) {
+                handleError(error);
+            }
+        });
+    }
+
+    function showSetup() {
+        render("main", `
+            <h1>Express CMS Setup</h1>
+            <p>Welcome to Express CMS! Please complete the setup process and enter a password.</p>
+            <form id="setup-form">
+                <div>
+                    <label for="admin-password">Admin Password:</label>
+                    <input type="password" id="admin-password" name="admin-password" required>
+                </div>
+                <button type="submit">Complete Setup</button>
+            </form>
+        `);
+        on("#setup-form", "submit", async (event) => {
+            const password = event.target["admin-password"].value;
+            try {
+                await post(prefix + "/complete-setup", {password});
+                window.location.reload();
+            } catch (error) {
+                handleError(error);
+            }
+        });
+    }
+
+    // endregion
+
+    // region generic functions
+
+    async function handleFormDataAndUploads(form, modelName) {
+        const formData = new FormData(form);
+        const data = {};
+        const promises = [];
+        formData.forEach((value, key) => {
+            if (value === "on") {
+                data[key] = true; // Handle checkbox as boolean
+            } else if (value instanceof File) {
+                if (value.name) {
+                    const uploadPromise = uploadFile(value, modelName);
+                    promises.push(uploadPromise);
+                    uploadPromise.then(response => {
+                        data[key] = response.url; // Assuming the server returns the file name
+                    });
+                }
+            } else {
+                data[key] = value; // Handle other types as string
+            }
+        });
+        await Promise.all(promises);
+        return data;
+    }
+
+    function renderForm(modelName, target, item = {}) {
+        for (const fieldName in models[modelName]) {
+            const type = models[modelName][fieldName];
+            const value = item[fieldName] || "";
+            if (["text", "number", "email", "date", "file"].includes(type)) {
+                render(target, `
+                    <div>
+                        <label for="${fieldName}">${fieldName}:</label>
+                        <input type="${type}" id="${fieldName}" name="${fieldName}" value="${value}">
+                    </div>
+                `, false);
+            } else if (type === "boolean") {
+                render(target, `
+                    <div>
+                        <label for="${fieldName}">${fieldName}:</label>
+                        <input type="checkbox" id="${fieldName}" name="${fieldName}" ${value ? "checked" : ""}>
+                    </div>
+                `, false);
+            } else {
+                throw new Error("Unsupported type " + type + " for field " + fieldName + " in model " + modelName);
+            }
+        }
+    }
+
+    async function load(url) {
+        const rawResponse = await fetch(url, {
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": window.localStorage.getItem("auth") || ""
+            }
+        });
+        return await rawResponse.json();
+    }
+
+    async function post(url, data, isJson = true) {
+        const headers = {
+            "Authorization": window.localStorage.getItem("auth") || ""
+        };
+        if (isJson) {
+            headers["Content-Type"] = "application/json";
+        }
+        const rawResponse = await fetch(url, {
+            method: "POST",
+            headers,
+            body: isJson ? JSON.stringify(data) : data
+        });
+        const response = await rawResponse.json();
+        if (!rawResponse.ok) {
+            throw new Error(response.message || "An error occurred");
+        }
+        return response;
+    }
+
+    async function request(method, url, data) {
+        const headers = {
+            "Authorization": window.localStorage.getItem("auth") || "",
+            "Content-Type": "application/json"
+        };
+        const rawResponse = await fetch(url, {
+            method,
+            headers,
+            body: JSON.stringify(data)
+        });
+        const response = await rawResponse.json();
+        if (!rawResponse.ok) {
+            throw new Error(response.message || "An error occurred");
+        }
+        return response;
+    }
+
+    function render(target, template, clear = true) {
+        const el = document.createElement("div");
+        el.innerHTML = template;
+        if (clear) {
+            document.querySelector(target).innerHTML = "";
+        }
+        document.querySelector(target).append(...Array.from(el.children));
+    }
+
+    function on(query, eventName, callback) {
+        const elements = document.querySelectorAll(query);
+        elements.forEach(element => {
+            element.addEventListener(eventName, (event) => {
+                event.preventDefault();
+                callback(event);
+            });
+        });
+    }
+
+    function handleError(error) {
+        console.error("Error:", error.message);
+        alert("An error occurred: " + error.message);
+    }
+
+    async function uploadFile(file, modelName) {
+        const formData = new FormData();
+        formData.append("file", file);
+        return await post(prefix + "/data/" + modelName + "/upload-file", formData, false);
+    }
+
+    // endregion
+</script>
+</body>
+</html>

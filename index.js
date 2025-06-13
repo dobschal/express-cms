@@ -1,0 +1,50 @@
+import path from "node:path";
+import express from "express";
+import {copyFiles, createDirectories, readDataFromFile} from "./utils.js";
+import router from "./router.js";
+
+const currentDir = path.dirname(import.meta.url).replace('file:/', '');
+const config = {
+    prefix: "/express-cms",
+    directory: '.express_cms',
+    models: {}
+};
+
+/**
+ * @typedef {Object} Config
+ * @property {string} [directory] - Directory to store data files in
+ * @property {{[string]: {[string]: ("text"|"number"|"file"|"boolean")}}} models
+ */
+
+/**
+ * Initialize the Express CMS.
+ * @param {import('express').Express} app
+ * @param {Config} c
+ */
+export default function (app, c) {
+    config.prefix = c.prefix || config.prefix;
+    config.directory = c.directory || config.directory;
+    config.models = c.models || {};
+    createDirectories(app, [config.directory, `${config.directory}/data`, `${config.directory}/uploads`]);
+    copyFiles(["index.html", "pico.min.css"], currentDir, config.directory);
+    app.use(config.prefix, express.static(config.directory));
+    app.use(express.json());
+    app.use(config.prefix, router(app, config));
+    console.log("🧘‍♂️Express CMS initialized");
+}
+
+/**
+ * @param {string} modelName
+ * @param {string} [id]
+ */
+export function readData(modelName, id) {
+    const data = readDataFromFile(`${config.directory}/data/${modelName}.json`);
+    if (id !== undefined) {
+        return data?.find(item => item.id === id);
+    }
+    return data ?? [];
+}
+
+
+
+

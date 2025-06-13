@@ -1,0 +1,23 @@
+{
+  "name": "@dobschal/express-cms",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {},
+  "keywords": [
+    "ExpressJS",
+    "CMS",
+    "Express",
+    "Editor"
+  ],
+  "author": "Sascha Dobschal <sascha@dobschal.eu>",
+  "license": "ISC",
+  "description": "Simple ExpressJS CMS with an editor interface.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dobschal/express-cms.git"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "multer": "^2.0.1"
+  }
+}
