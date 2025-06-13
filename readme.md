@@ -1,25 +1,27 @@
-# Express CMS
-
-A simple CMS implementation for ExpressJS. 
+# 🧘‍♂️ Express CMS
+👉 A simple CMS implementation for ExpressJS. It provides an admin UI to manage content.
+All content is stored in JSON files public on the server and can be accessed easily.
 
 [![NPM](https://img.shields.io/npm/v/@dobschal/express-cms)](https://www.npmjs.com/package/@dobschal/express-cms)
 
-## Installation
+## Get Started
+
+### Installation
 
 ```bash
 npm install --save @dobschal/express-cms
 ```
 
-## Usage
+### Usage
 
-Initialize the CMS with a configuration object:
+Import and run the cms setup function with a configuration object that defines your models:
 ```javascript
-import expressCms from '@dobschal/express-cms';
 import express from 'express';
+import cms from '@dobschal/express-cms';
 
 const app = express()
 
-expressCms(app, {
+cms(app, {
     models: {
         concerts: {
             title: "text",
@@ -28,9 +30,73 @@ expressCms(app, {
     }
 });
 
-app.listen(3000, () => {
-    //...
-})
+// Add your express app setup and routes here...
+
+app.listen(3000, () => /* ... */);
 ```
 
+### Open Admin UI
 Open your browser and navigate to `http://localhost:3000/express-cms` to access the CMS interface.
+
+## Retrieve Data
+
+There are two ways to retrieve data from the CMS. From the client side you can fetch the JSON files directly. From the server side you can read the data and server-side render it.
+
+### Client Side
+The JSON files are public available under `/express-cms/data/{modelName}.json`. You can fetch them using the Fetch API or any HTTP client.
+```javascript
+fetch('/express-cms/data/concerts.json')
+    .then(response => response.json())
+    .then(data => {
+        console.log(data); // Array of concert objects
+    });
+```
+
+### Server Side (REST API)
+You can access the data from the server side by importing the `readData` function from the CMS module. This function returns an array of items of the specified model.
+If you pass and `id` parameter, it will return a single item with that id.
+
+**Read all items:**
+```javascript
+import { readData } from '@dobschal/express-cms';
+// ...
+
+app.get('/concerts', async (req, res) => {
+    const concerts = await readData('concerts');
+    return res.send(concerts); // or render view
+});
+```
+
+**Read a single item by ID:**
+```javascript
+import { readData } from '@dobschal/express-cms';
+// ...
+
+app.get('/concerts/:id', async (req, res) => {
+    const concert = await readData('concerts', req.params.id);
+    return res.send(concert); // or render view
+});
+```
+
+## Model Types
+Models must be flat objects with the following property types:
+- `text`: A simple text field.
+- `date`: A date field, which can be used to store dates.
+- `number`: A number field, which can be used to store numeric values.
+- `boolean`: A boolean field, which can be used to store true/false values.
+- `file`: A file field, which can be used to upload files.
+
+Example:
+```javascript
+cms(app, {
+    models: {
+        concerts: {
+            title: "text",
+            date: "date",
+            price: "number",
+            isSoldOut: "boolean",
+            poster: "file"
+        }        
+    }
+});
+```
