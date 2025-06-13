@@ -50,43 +50,43 @@ export default function (app, config) {
 
     router.get('/data/:model', authenticated, (req, res) => {
         const model = req.params.model;
-        const data = readDataFromFile(`${directory}/data/${model}.json`);
+        const data = readDataFromFile(getPathToModel(model));
         res.send(data ?? []);
     });
 
     router.post('/data/:model', authenticated, (req, res) => {
         const model = req.params.model;
-        const items = readDataFromFile(`${directory}/data/${model}.json`) ?? [];
+        const items = readDataFromFile(getPathToModel(model)) ?? [];
         items.push(req.body);
-        writeDataToFile(`${directory}/data/${model}.json`, JSON.stringify(items, null, 2));
+        writeDataToFile(getPathToModel(model), JSON.stringify(items, null, 2));
         res.send({message: 'Data saved successfully'});
     });
 
     router.put('/data/:model/:id', authenticated, (req, res) => {
         const model = req.params.model;
         const id = req.params.id;
-        const items = readDataFromFile(`${directory}/data/${model}.json`) ?? [];
+        const items = readDataFromFile(getPathToModel(model)) ?? [];
         for (const item of items) {
             if (item.id === id) {
                 Object.assign(item, req.body);
                 break;
             }
         }
-        writeDataToFile(`${directory}/data/${model}.json`, JSON.stringify(items, null, 2));
+        writeDataToFile(getPathToModel(model), JSON.stringify(items, null, 2));
         res.send({message: 'Data saved successfully'});
     });
 
     router.delete('/data/:model/:id', authenticated, (req, res) => {
         const model = req.params.model;
         const id = req.params.id;
-        const items = readDataFromFile(`${directory}/data/${model}.json`) ?? [];
+        const items = readDataFromFile(getPathToModel(model)) ?? [];
         const filteredItems = items.filter(item => item.id !== id);
-        writeDataToFile(`${directory}/data/${model}.json`, JSON.stringify(filteredItems, null, 2));
+        writeDataToFile(getPathToModel(model), JSON.stringify(filteredItems, null, 2));
         res.send({message: 'Data saved successfully'});
     });
 
     router.post('/data/:model/upload-file', authenticated, handleUpload, (req, res) => {
-        res.send({message: 'File saved successfully', url: "/express-cms/uploads/" + req.file.filename});
+        res.send({message: 'File saved successfully', url: config.prefix + "/uploads/" + req.file.filename});
     });
 
     return router;
@@ -108,12 +108,17 @@ export default function (app, config) {
             return res.status(401).send({message: 'Unauthorized'});
         }
     }
+
+    function getPathToModel(modelName) {
+        const isPublic = config.models[modelName]?.__public ?? false;
+        return isPublic ? `${directory}/public/data/${modelName}.json` : `${directory}/data/${modelName}.json`;
+    }
 }
 
 function getUploadMiddleware(directory) {
     const storage = multer.diskStorage({
         destination: function (req, file, cb) {
-            cb(null, `${directory}/uploads/`)
+            cb(null, `${directory}/public/uploads/`)
         },
         filename: function (req, file, cb) {
             const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)

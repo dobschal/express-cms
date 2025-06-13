@@ -7,13 +7,13 @@ const currentDir = path.dirname(import.meta.url).replace('file:/', '');
 const config = {
     prefix: "/express-cms",
     directory: '.express_cms',
-    models: {}
+    models: {},
 };
 
 /**
  * @typedef {Object} Config
  * @property {string} [directory] - Directory to store data files in
- * @property {{[string]: {[string]: ("text"|"number"|"file"|"boolean")}}} models
+ * @property {{[string]: {[string]: ("text"|"number"|"file"|"boolean"), [__public]: boolean}}} models
  */
 
 /**
@@ -25,9 +25,9 @@ export default function (app, c) {
     config.prefix = c.prefix || config.prefix;
     config.directory = c.directory || config.directory;
     config.models = c.models || {};
-    createDirectories(app, [config.directory, `${config.directory}/data`, `${config.directory}/uploads`]);
-    copyFiles(["index.html", "pico.min.css"], currentDir, config.directory);
-    app.use(config.prefix, express.static(config.directory));
+    createDirectories(app, [config.directory, `${config.directory}/public/data`, `${config.directory}/data`, `${config.directory}/public/uploads`]);
+    copyFiles(["index.html", "pico.min.css"], currentDir, config.directory + "/public");
+    app.use(config.prefix, express.static(config.directory  + "/public"));
     app.use(express.json());
     app.use(config.prefix, router(app, config));
     console.log("🧘‍♂️Express CMS initialized");
@@ -38,7 +38,10 @@ export default function (app, c) {
  * @param {string} [id]
  */
 export function readData(modelName, id) {
-    const data = readDataFromFile(`${config.directory}/data/${modelName}.json`);
+    const model = config.models[modelName];
+    const isPublic = model.__public ?? false;
+    const path = isPublic ? `${config.directory}/public/data/${modelName}.json` : `${config.directory}/data/${modelName}.json`;
+    const data = readDataFromFile(path);
     if (id !== undefined) {
         return data?.find(item => item.id === id);
     }
