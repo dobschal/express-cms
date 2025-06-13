@@ -25,11 +25,11 @@ export default function (app, c) {
     config.prefix = c.prefix || config.prefix;
     config.directory = c.directory || config.directory;
     config.models = c.models || {};
-    createDirectories(app, [config.directory, `${config.directory}/public/data`, `${config.directory}/data`, `${config.directory}/public/uploads`]);
+    createDirectories([config.directory, `${config.directory}/public/data`, `${config.directory}/data`, `${config.directory}/public/uploads`]);
     copyFiles(["index.html", "pico.min.css"], currentDir, config.directory + "/public");
     app.use(config.prefix, express.static(config.directory  + "/public"));
     app.use(express.json());
-    app.use(config.prefix, router(app, config));
+    app.use(config.prefix, router(config));
     console.log("🧘‍♂️Express CMS initialized");
 }
 

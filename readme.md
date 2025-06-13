@@ -20,19 +20,16 @@ import express from 'express';
 import cms from '@dobschal/express-cms';
 
 const app = express()
-
 cms(app, {
     models: {
         concerts: {
             title: "text",
-            date: "date"
+            date: "date",
+            __public: true
         }        
     }
 });
-
-// Add your express app setup and routes here...
-
-app.listen(3000, () => /* ... */);
+app.listen(3000, () => console.log("Server running on http://localhost:3000"));
 ```
 
 ### Open Admin UI
@@ -40,21 +37,11 @@ Open your browser and navigate to `http://localhost:3000/express-cms` to access 
 
 ## Retrieve Data
 
-There are two ways to retrieve data from the CMS. From the client side you can fetch the JSON files directly. From the server side you can read the data and server-side render it.
+There are two ways to retrieve data from the CMS. From the client side you can fetch the JSON files directly if the model is marked as public. From the server side you can read the data and use it e.g. to server side render it.
 
-### Client Side
-The JSON files are public available under `/express-cms/data/{modelName}.json`. You can fetch them using the Fetch API or any HTTP client.
-```javascript
-fetch('/express-cms/data/concerts.json')
-    .then(response => response.json())
-    .then(data => {
-        console.log(data); // Array of concert objects
-    });
-```
-
-### Server Side (REST API)
+### Server Side
 You can access the data from the server side by importing the `readData` function from the CMS module. This function returns an array of items of the specified model.
-If you pass and `id` parameter, it will return a single item with that id.
+If you pass the `id` parameter, it will return a single item with that id.
 
 **Read all items:**
 ```javascript
@@ -76,6 +63,32 @@ app.get('/concerts/:id', async (req, res) => {
     const concert = await readData('concerts', req.params.id);
     return res.send(concert); // or render view
 });
+```
+
+### Marking Models as Public
+To make a model publicly accessible, you can set the `public` property to `true` in the model configuration. This will allow the data to be served as JSON files.
+```javascript
+cms(app, {
+    models: {
+        concerts: {
+            title: "text",
+            date: "date",
+            __public: true // This model is publicly accessible
+        }        
+    }
+});
+```
+
+When a model is marked as public, the CMS will automatically create a JSON file for it under `/express-cms/data/{modelName}.json`.
+
+### Client Side
+The JSON files are public available under `/express-cms/data/{modelName}.json`. You can fetch them using the Fetch API or any HTTP client.
+```javascript
+fetch('/express-cms/data/concerts.json')
+    .then(response => response.json())
+    .then(data => {
+        console.log(data); // Array of concert objects
+    });
 ```
 
 ## Model Types

@@ -38,7 +38,7 @@ export function copyFiles(names, sourceDirectory, targetDirectory) {
     }
 }
 
-export function createDirectories(app, directories) {
+export function createDirectories(directories) {
     for (const directory of directories) {
         if (!fs.existsSync(directory)) {
             fs.mkdirSync(directory, {recursive: true});

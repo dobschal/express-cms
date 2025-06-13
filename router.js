@@ -2,7 +2,7 @@ import express from "express";
 import {hashPassword, readDataFromFile, writeDataToFile} from "./utils.js";
 import multer from "multer";
 
-export default function (app, config) {
+export default function (config) {
     const {directory} = config;
     const handleUpload = getUploadMiddleware(directory);
     const router = express.Router()
