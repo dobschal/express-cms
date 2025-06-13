@@ -1,6 +1,6 @@
 {
   "name": "@dobschal/express-cms",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "index.js",
   "scripts": {},
   "keywords": [
@@ -19,5 +19,6 @@
   "dependencies": {
     "express": "^5.1.0",
     "multer": "^2.0.1"
-  }
+  },
+  "type": "module"
 }
