@@ -27,26 +27,28 @@
 
     // region main
 
-    const prefix = "/express-cms";
-    const isAuthenticated = !!window.localStorage.getItem("auth");
+    const THUMBNAIL_SIZE = 300;
+    const URL_PREFIX = "/express-cms";
+    const IS_AUTHENTICATED = !!window.localStorage.getItem("auth");
+
     let models = {};
 
     main();
 
     async function main() {
-        const {status} = await load(prefix + "/setup-status");
+        const {status} = await load(URL_PREFIX + "/setup-status");
         console.log("Setup status:", status);
         if (status === "setup-required") {
             return showSetup();
         }
-        if (!isAuthenticated) {
+        if (!IS_AUTHENTICATED) {
             return showLogin();
         }
         await loadModels();
         if (window.location.hash) {
             const modelName = window.location.hash.slice(1);
             try {
-                showData(modelName, await load(prefix + "/data/" + modelName));
+                showData(modelName, await load(URL_PREFIX + "/data/" + modelName));
             } catch (error) {
                 handleError(error);
             }
@@ -61,7 +63,7 @@
 
     async function loadModels() {
         try {
-            models = await load(prefix + "/models");
+            models = await load(URL_PREFIX + "/models");
         } catch (e) {
             handleError(e);
         }
@@ -95,9 +97,9 @@
             try {
                 const data = await handleFormDataAndUploads(event.target, modelName);
                 data.id = data.id ?? Date.now().toString() + "-" + Math.round(Math.random() * 100000); // Generate a unique ID for the new item
-                await post(prefix + "/data/" + modelName, data);
+                await request("POST", URL_PREFIX + "/data/" + modelName, data);
                 document.getElementById("new-item-modal").remove();
-                showData(modelName, await load(prefix + "/data/" + modelName));
+                showData(modelName, await load(URL_PREFIX + "/data/" + modelName));
             } catch (error) {
                 handleError(error);
             }
@@ -127,9 +129,9 @@
             try {
                 const data = await handleFormDataAndUploads(event.target, modelName);
                 data.id = item.id; // Keep the same ID for editing
-                await request("PUT", prefix + "/data/" + modelName + "/" + item.id, data);
+                await request("PUT", URL_PREFIX + "/data/" + modelName + "/" + item.id, data);
                 document.getElementById("edit-item-modal").remove();
-                showData(modelName, await load(prefix + "/data/" + modelName));
+                showData(modelName, await load(URL_PREFIX + "/data/" + modelName));
             } catch (error) {
                 handleError(error);
             }
@@ -148,7 +150,7 @@
 
         render("main", `
             <p>
-                <a href="${prefix}">< Back</a>
+                <a href="${URL_PREFIX}">< Back</a>
             </p>
             <article>
                 <h2>${modelName}</h2>
@@ -189,8 +191,8 @@
             const itemId = event.target.dataset.id;
             if (!confirm("Are you sure you want to delete this item?")) return;
             try {
-                await request("DELETE", prefix + "/data/" + modelName + "/" + itemId);
-                showData(modelName, await load(prefix + "/data/" + modelName));
+                await request("DELETE", URL_PREFIX + "/data/" + modelName + "/" + itemId);
+                showData(modelName, await load(URL_PREFIX + "/data/" + modelName));
             } catch (error) {
                 handleError(error);
             }
@@ -217,7 +219,7 @@
             const model = event.target.value;
             if (!model) return;
             try {
-                const data = await load(prefix + "/data/" + model);
+                const data = await load(URL_PREFIX + "/data/" + model);
                 window.location.hash = model; // Update hash for direct access
                 showData(model, data);
             } catch (error) {
@@ -247,7 +249,7 @@
         on("#login-form", "submit", async (event) => {
             const password = event.target["password"].value;
             try {
-                await post(prefix + "/login", {password});
+                await request("POST", URL_PREFIX + "/login", {password});
                 window.localStorage.setItem("auth", password);
                 window.location.reload();
             } catch (error) {
@@ -271,7 +273,7 @@
         on("#setup-form", "submit", async (event) => {
             const password = event.target["admin-password"].value;
             try {
-                await post(prefix + "/complete-setup", {password});
+                await request("POST", URL_PREFIX + "/complete-setup", {password});
                 window.location.reload();
             } catch (error) {
                 handleError(error);
@@ -291,11 +293,20 @@
             if (value === "on") {
                 data[key] = true; // Handle checkbox as boolean
             } else if (value instanceof File) {
+                if(models[modelName][key] === "image") {
+                    promises.push(
+                        createImageThumbnail(value).then(thumbnailFile =>
+                            uploadFile(thumbnailFile, modelName).then(response => {
+                                data[key + "_thumbnail"] = response.url;
+                            })
+                        )
+                    );
+                }
                 if (value.name) {
                     const uploadPromise = uploadFile(value, modelName);
                     promises.push(uploadPromise);
                     uploadPromise.then(response => {
-                        data[key] = response.url; // Assuming the server returns the file name
+                        data[key] = response.url;
                     });
                 }
             } else {
@@ -315,6 +326,15 @@
                     <div>
                         <label for="${fieldName}">${fieldName}:</label>
                         <input type="${type}" id="${fieldName}" name="${fieldName}" value="${value}">
+                    </div>
+                `, false);
+            } else if (type === "image") {
+                render(target, `
+                    <div class="grid">
+                        <div>
+                            <label for="${fieldName}">${fieldName}:</label>
+                            <input type="file" accept="image/*" id="${fieldName}" name="${fieldName}" value="${value}">
+                        </div>
                     </div>
                 `, false);
             } else if (type === "boolean") {
@@ -340,7 +360,7 @@
         return await rawResponse.json();
     }
 
-    async function post(url, data, isJson = true) {
+    async function request(method, url, data, isJson = true) {
         const headers = {
             "Authorization": window.localStorage.getItem("auth") || ""
         };
@@ -348,26 +368,9 @@
             headers["Content-Type"] = "application/json";
         }
         const rawResponse = await fetch(url, {
-            method: "POST",
-            headers,
-            body: isJson ? JSON.stringify(data) : data
-        });
-        const response = await rawResponse.json();
-        if (!rawResponse.ok) {
-            throw new Error(response.message || "An error occurred");
-        }
-        return response;
-    }
-
-    async function request(method, url, data) {
-        const headers = {
-            "Authorization": window.localStorage.getItem("auth") || "",
-            "Content-Type": "application/json"
-        };
-        const rawResponse = await fetch(url, {
             method,
             headers,
-            body: JSON.stringify(data)
+            body: isJson ? JSON.stringify(data) : data
         });
         const response = await rawResponse.json();
         if (!rawResponse.ok) {
@@ -403,7 +406,49 @@
     async function uploadFile(file, modelName) {
         const formData = new FormData();
         formData.append("file", file);
-        return await post(prefix + "/data/" + modelName + "/upload-file", formData, false);
+        return await request("POST", URL_PREFIX + "/data/" + modelName + "/upload-file", formData, false);
+    }
+
+    function createImageThumbnail(file) {
+        return new Promise((resolve) => {
+            const canvasElement = document.createElement('canvas');
+            canvasElement.width = THUMBNAIL_SIZE;
+            canvasElement.height = THUMBNAIL_SIZE;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const img = new Image();
+                img.onload = function () {
+                    const ctx = canvasElement.getContext('2d');
+                    ctx.clearRect(0, 0, THUMBNAIL_SIZE, THUMBNAIL_SIZE);
+
+                    // Calculate scaling
+                    const scale = Math.max(THUMBNAIL_SIZE / img.width, THUMBNAIL_SIZE / img.height);
+                    const scaledWidth = img.width * scale;
+                    const scaledHeight = img.height * scale;
+
+                    // Calculate cropping position (centered)
+                    const sx = (scaledWidth - THUMBNAIL_SIZE) / 2;
+                    const sy = (scaledHeight - THUMBNAIL_SIZE) / 2;
+
+                    // Draw to an off-screen canvas to scale
+                    const offCanvas = document.createElement('canvas');
+                    offCanvas.width = scaledWidth;
+                    offCanvas.height = scaledHeight;
+                    const offCtx = offCanvas.getContext('2d');
+                    offCtx.drawImage(img, 0, 0, scaledWidth, scaledHeight);
+
+                    // Crop to 200x200 from center
+                    const imageData = offCtx.getImageData(sx, sy, THUMBNAIL_SIZE, THUMBNAIL_SIZE);
+                    ctx.putImageData(imageData, 0, 0);
+                    canvasElement.toBlob((blob) => {
+                        const file = new File([blob], "thumbnail.jpg", { type: "image/jpeg" })
+                        resolve(file);
+                    }, 'image/jpeg');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
     }
 
     // endregion
