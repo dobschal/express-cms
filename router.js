@@ -1,5 +1,5 @@
 import express from "express";
-import {hashPassword, readDataFromFile, writeDataToFile} from "./utils.js";
+import {hashPassword, readDataFromFile, writeToFile} from "./utils.js";
 import multer from "multer";
 
 export default function (config) {
@@ -20,7 +20,7 @@ export default function (config) {
         if (!password || password.length < 8) {
             return res.status(400).send({message: 'Password must be at least 8 characters long.'});
         }
-        writeDataToFile(`${directory}/data/password.json`, JSON.stringify(hashPassword(password)));
+        writeToFile(`${directory}/data/password.json`, JSON.stringify(hashPassword(password)));
         return res.send({status: 'setup-complete'});
     });
 
@@ -58,7 +58,7 @@ export default function (config) {
         const model = req.params.model;
         const items = readDataFromFile(getPathToModel(model)) ?? [];
         items.push(req.body);
-        writeDataToFile(getPathToModel(model), JSON.stringify(items, null, 2));
+        writeToFile(getPathToModel(model), JSON.stringify(items, null, 2));
         res.send({message: 'Data saved successfully'});
     });
 
@@ -72,7 +72,7 @@ export default function (config) {
                 break;
             }
         }
-        writeDataToFile(getPathToModel(model), JSON.stringify(items, null, 2));
+        writeToFile(getPathToModel(model), JSON.stringify(items, null, 2));
         res.send({message: 'Data saved successfully'});
     });
 
@@ -81,7 +81,7 @@ export default function (config) {
         const id = req.params.id;
         const items = readDataFromFile(getPathToModel(model)) ?? [];
         const filteredItems = items.filter(item => item.id !== id);
-        writeDataToFile(getPathToModel(model), JSON.stringify(filteredItems, null, 2));
+        writeToFile(getPathToModel(model), JSON.stringify(filteredItems, null, 2));
         res.send({message: 'Data saved successfully'});
     });
 

@@ -1,6 +1,7 @@
 # 🧘‍♂️ Express CMS
 👉 A simple CMS implementation for ExpressJS. It provides an admin UI to manage content.
-All content is stored in JSON files public on the server and can be accessed easily.
+All content is stored in JSON files on the server and can be accessed easily.
+This CMS is designed to be simple and easy to use, making it a great choice for small projects or prototypes.
 
 [![NPM](https://img.shields.io/npm/v/@dobschal/express-cms)](https://www.npmjs.com/package/@dobschal/express-cms)
 
@@ -25,7 +26,7 @@ cms(app, {
         concerts: {
             title: "text",
             date: "date",
-            __public: true
+            __public: true // this will make the data publicly accessible
         }        
     }
 });
@@ -98,6 +99,7 @@ Models must be flat objects with the following property types:
 - `number`: A number field, which can be used to store numeric values.
 - `boolean`: A boolean field, which can be used to store true/false values.
 - `file`: A file field, which can be used to upload files.
+- `image`: An image field, which can be used to upload images. This automatically creates a 300x300 thumbnail.
 
 Example:
 ```javascript
@@ -107,8 +109,9 @@ cms(app, {
             title: "text",
             date: "date",
             price: "number",
+            bill: "file",
             isSoldOut: "boolean",
-            poster: "file"
+            poster: "image"
         }        
     }
 });

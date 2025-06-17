@@ -4,7 +4,11 @@ import crypto from "node:crypto";
 
 const currentDir = path.dirname(import.meta.url).replace('file:/', '');
 
-export function writeDataToFile(filePath, data) {
+/**
+ * @param {string} filePath
+ * @param {string} data
+ */
+export function writeToFile(filePath, data) {
     const absolutePath = path.resolve(filePath)
     fs.writeFileSync(absolutePath, data, 'utf8');
 }

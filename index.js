@@ -1,6 +1,6 @@
 import path from "node:path";
 import express from "express";
-import {copyFiles, createDirectories, readDataFromFile} from "./utils.js";
+import {copyFiles, createDirectories, readDataFromFile, writeToFile} from "./utils.js";
 import router from "./router.js";
 
 const currentDir = path.dirname(import.meta.url).replace('file:/', '');
@@ -13,7 +13,7 @@ const config = {
 /**
  * @typedef {Object} Config
  * @property {string} [directory] - Directory to store data files in
- * @property {{[string]: {[string]: ("text"|"number"|"file"|"boolean"), [__public]: boolean}}} models
+ * @property {{[string]: {[string]: ("text"|"number"|"file"|"boolean"|"image"), [__public]: boolean}}} models
  */
 
 /**
@@ -46,6 +46,22 @@ export function readData(modelName, id) {
         return data?.find(item => item.id === id);
     }
     return data ?? [];
+}
+
+/**
+ * This updates or adds a data item to the specified model data array.
+ * @param modelName
+ * @param data
+ */
+export function writeData(modelName, data) {
+    data.id = data.id || Date.now().toString() + "-" + Math.round(Math.random() * 100000);
+    const model = config.models[modelName];
+    const isPublic = model.__public ?? false;
+    const path = isPublic ? `${config.directory}/public/data/${modelName}.json` : `${config.directory}/data/${modelName}.json`;
+    let items = readDataFromFile(path) ?? [];
+    items = items.filter(item => item.id !== data.id); // Remove existing item with the same ID
+    items.push(data);
+    writeToFile(path, JSON.stringify(items, null, 2));
 }
 
 
