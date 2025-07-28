@@ -13,7 +13,7 @@ const config = {
 /**
  * @typedef {Object} Config
  * @property {string} [directory] - Directory to store data files in
- * @property {{[string]: {[string]: ("text"|"number"|"file"|"boolean"|"image"), [__public]: boolean}}} models
+ * @property {{[string]: {[string]: ("text"|"number"|"file"|"boolean"|"image"|"longtext"), [__public]: boolean}}} models
  */
 
 /**

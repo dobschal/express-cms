@@ -95,6 +95,7 @@ fetch('/express-cms/data/concerts.json')
 ## Model Types
 Models must be flat objects with the following property types:
 - `text`: A simple text field.
+-  longtext: A long text field, which can be used for larger text content.
 - `date`: A date field, which can be used to store dates.
 - `number`: A number field, which can be used to store numeric values.
 - `boolean`: A boolean field, which can be used to store true/false values.

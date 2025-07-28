@@ -336,6 +336,13 @@
                         <input type="${type}" id="${fieldName}" name="${fieldName}" value="${value}">
                     </div>
                 `, false);
+            } else if (type === "longtext") {
+                render(target, `
+                    <div>
+                        <label for="${fieldName}">${fieldName}:</label>
+                        <textarea id="${fieldName}" name="${fieldName}">${value}</textarea>
+                    </div>
+                `, false);
             } else if (type === "image") {
                 render(target, `
                     <div class="grid">
