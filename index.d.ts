@@ -9,3 +9,5 @@ interface Config {
 export default function(app: Express, config: Config): void;
 
 export function readData(model: string, id: string | undefined): unknown;
+
+export function writeData(model: string, data: unknown): unknown;
