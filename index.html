@@ -152,7 +152,7 @@
             if (models[modelName][field] === "file") {
                 return `<td><a href="${item[field]}" target="_blank">${item[field] || "No file"}</a></td>`;
             }
-            return `<td>${item[field] || ""}</td>`;
+            return `<td>${(item[field] + "").substring(0, 50) || ""}</td>`;
         }
 
         render("main", `
