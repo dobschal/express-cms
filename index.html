@@ -300,21 +300,23 @@
             if (value === "on") {
                 data[key] = true; // Handle checkbox as boolean
             } else if (value instanceof File) {
-                if(models[modelName][key] === "image") {
-                    promises.push(
-                        createImageThumbnail(value).then(thumbnailFile =>
-                            uploadFile(thumbnailFile, modelName).then(response => {
-                                data[key + "_thumbnail"] = response.url;
-                            })
-                        )
-                    );
-                }
-                if (value.name) {
-                    const uploadPromise = uploadFile(value, modelName);
-                    promises.push(uploadPromise);
-                    uploadPromise.then(response => {
-                        data[key] = response.url;
-                    });
+                if(value.size > 0) {
+                    if (models[modelName][key] === "image") {
+                        promises.push(
+                            createImageThumbnail(value).then(thumbnailFile =>
+                                uploadFile(thumbnailFile, modelName).then(response => {
+                                    data[key + "_thumbnail"] = response.url;
+                                })
+                            )
+                        );
+                    }
+                    if (value.name) {
+                        const uploadPromise = uploadFile(value, modelName);
+                        promises.push(uploadPromise);
+                        uploadPromise.then(response => {
+                            data[key] = response.url;
+                        });
+                    }
                 }
             } else {
                 data[key] = value; // Handle other types as string
